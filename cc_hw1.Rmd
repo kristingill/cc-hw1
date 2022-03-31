@@ -13,6 +13,19 @@ library(tidyverse)
 ```
 
 ```{r}
-sf_climate <- read_csv(here("data", "2926351.csv"))
+sf_climate <- read_csv(here("data", "2926351.csv")) %>% 
+  clean_names()
+```
+
+```{r}
+source(here("R", "consecutive.R"))
+
+consecutive_days <- 2
+
+temp_threshold <- 80
+
+temp <- 
+
+consecutive_hot <- consecutive(temp = temp, consecutive_days = consecutive_days, temp_threshold = temp_threshold)
 ```
 
