@@ -1,0 +1,18 @@
+---
+title: "HW1"
+author: "Genevieve Chiong and Kristin Gill"
+date: "3/31/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(janitor)
+library(tidyverse)
+```
+
+```{r}
+sf_climate <- read_csv(here("data", "2926351.csv"))
+```
+
