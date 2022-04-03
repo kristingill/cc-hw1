@@ -18,14 +18,34 @@ sf_climate <- read_csv(here("data", "2926351.csv")) %>%
 ```
 
 ```{r}
+# consecutive hot days
 source(here("R", "consecutive.R"))
 
-consecutive_days <- 2
+tmax_filter <- sf_climate %>% 
+  filter(date >= "1980-01-01" & date <= "2000-12-31") %>% 
+  drop_na(tmax)
 
-temp_threshold <- 80
+consecutive_days <- 1
 
-temp <- 
+temp_threshold <- 100
 
-consecutive_hot <- consecutive(temp = temp, consecutive_days = consecutive_days, temp_threshold = temp_threshold)
+temp <- tmax_filter$tmax
+
+consecutive_hot <- consecutive(data = temp, consecutive_days = consecutive_days, threshold = temp_threshold)
+```
+
+```{r}
+# consecutive wet days
+prcp_filter <- sf_climate %>% 
+  filter(date >= "1938-04-01" & date <= "1958-12-31") %>% 
+  drop_na(prcp)
+
+consecutive_days <- 3
+
+wet_threshold <- 1
+
+prcp <- prcp_filter$prcp
+
+consecutive_wet <- consecutive(data = prcp, consecutive_days = consecutive_days, threshold = wet_threshold)
 ```
 
