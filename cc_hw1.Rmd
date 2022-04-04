@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(here)
 library(janitor)
 library(tidyverse)
+library(lubridate)
 ```
 
 ```{r}
@@ -28,4 +29,89 @@ temp <-
 
 consecutive_hot <- consecutive(temp = temp, consecutive_days = consecutive_days, temp_threshold = temp_threshold)
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+#tmax 
+
+sf_climate_new = sf_climate %>% 
+  mutate(year = year(date)) 
+
+sf_climate_yearly = sf_climate_new %>% 
+  select(year, tmax) %>% 
+  group_by(year) %>% 
+  summarize(tmax = mean(tmax)) 
+
+ggplot(data = sf_climate_yearly,
+       aes(x = year,
+           y = tmax)) +
+  geom_line()  
+
+
+# difference from the entire mean of dataset
+# look at 1930 - 2020 then break it down by decade difference from the average
+
+total_mean <- mean(sf_climate$tmax, na.rm = TRUE)
+
+sf_climate_decade = sf_climate_yearly %>% 
+  mutate()
+
+write.csv(sf_climate_yearly,"ESM 237 - Climate Change Impacts & Adaptation\\cc-hw1\\data\\sf_climate_yearly.csv", row.names = FALSE)
+
+sf_climate_decade <- read_csv(here("data", "sf_climate_decade.csv")) %>% 
+  clean_names() %>% 
+  mutate(total_avg = 63.73) %>% 
+  mutate(difference = (total_avg - tmax_avg))
+
+ggplot(data = sf_climate_decade, 
+       aes(x = year,
+           y = difference)) + 
+  geom_col(fill = "cadetblue4", color = "black") +
+  ggtitle(label = "Decadal Surface Temperature Anomalies, 1930-2020",
+          subtitle = "San Francisco, CA") + 
+  labs(x = "\nDecade",
+       y = "\nDifference from Average (F)") + 
+  scale_x_continuous(breaks = c(1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020, 2030)) + 
+  theme_bw()
+```
+
+
+```{r}
+# daily average for 1925
+precip_past <- sf_climate %>% 
+  filter(date >= "1925-01-01" & "1925-12-31" >= date) 
+
+# daily average for 2015 
+precip_present <- sf_climate %>% 
+  filter(date >= "2015-01-01" & "2015-12-31" >= date) 
+
+
+# yearly average (comparison between 1921 and 2021? or looking at pre and post industrialization)
+
+
+```
+
+
+
+
 
