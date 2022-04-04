@@ -1,12 +1,13 @@
 #' temperature risk
 #'
-#' compute temperature risk for urban dwellers
-#' @param temp (C) (at least 5 days)
-#' @param temp_threshold (C) (default 30)
-#' @param consecutive_days, length of the heat event
+#' compute temperature or precipitation risk for urban dwellers
+#' @param data climate data like temperature or precipitation
+#' @param threshold a threshold of temperature or precipitation
+#' @param consecutive_days, length of the heat or precipitation event
+#' @param date, as date
 #' @return consecutive_days
 
-consecutive = function(temp, consecutive_days, temp_threshold) {
+consecutive = function(data, consecutive_days, threshold) {
   
   # create empty lists
   temp_over <- list()
@@ -22,8 +23,8 @@ consecutive = function(temp, consecutive_days, temp_threshold) {
   for (i in 1:length(temp)) {
     
     # if temperature is over the temperature threshold, add it to the list
-    if (temp[i] > temp_threshold) {
-      temp_over <- append(temp_over, temp[i])
+    if (data[i] > threshold) {
+      temp_over <- append(temp_over, data[i])
     }
     
     else {
@@ -44,8 +45,8 @@ consecutive = function(temp, consecutive_days, temp_threshold) {
     }
   }
   
-  consecutive_days <- as.data.frame(unlist(cons_days_all)) %>%
-    mutate(mean_temp = unlist(mean_temp_all)) %>% 
+  consecutive_days <- as.data.frame(unlist(mean_temp_all)) %>% 
+    mutate(cons_days = unlist(cons_days_all))
   
   return(consecutive_days = consecutive_days)
 }
