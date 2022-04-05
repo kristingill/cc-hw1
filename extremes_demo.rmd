@@ -1,0 +1,68 @@
+---
+title: "extremes_demo"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+The first step is to read in some data. Here, I've chosen the Lake Cachuma station from the National Centers for Environmental Information website:
+https://www.ncdc.noaa.gov/cdo-web/datatools/findstation
+
+This is the same dataset used for the trends demo in the last class session. Let's read in the data again!
+
+```{r readdata}
+library(lubridate)
+library(ggplot2)
+library(tidyverse)
+library(chron)
+
+clim = read.table("CachumaLake_NCDC_USC00041253.csv",fill=TRUE,sep=',',header=T)
+head(clim)
+
+date=as.Date(clim$DATE)
+
+
+```
+
+We already looked at the behavior of trends in some metrics - but here are a couple other examples of useful extremes.
+
+1) Number of freezing days: select all days with temperatures below 32F
+
+```{r other metrics, echo=TRUE}
+
+clim$freeze = ifelse(clim$TMIN <= 32, 1, 0)
+clim.pk = clim %>% group_by(year(date)) %>% summarize(ndayfr=sum(freeze))
+clim.pk$dt = unique(year(date))
+
+ggplot(clim.pk, aes(dt, ndayfr))+geom_point()+labs(y="Number of Freezing Days")
+```
+
+Note that the trends in mean-state and extreme metrics often go together: from last time, recall that there was a trend toward decreasing minimum daily temperature. How does that affect the frequency of occurrence of freezing days?
+
+
+2) Hottest day of the year
+
+Looking at the warm end of the temperature distribution, we can look for trends in the temperature during the hottest day of the year.
+
+```
+clim.pk = clim %>% group_by(year(date)) %>% summarize(hotday=max(TMAX))
+clim.pk$dt = unique(year(date))
+
+ggplot(clim.pk, aes(dt, hotday))+geom_point()+labs(y="Hottest Day in the Year")
+```
+
+3) Return periods 
+
+In lecture, we discussed the concept of return periods and return levels. Here is how you calculate these things with real data!
+
+Calculate the return period of 1 in daily precipitation
+
+``` {r return period}
+clim$flood = ifelse(clim$PRCP >= 1, 1, 0)
+nyrs=length(unique(year(date)))
+
+retper=(nyrs+1)/sum(clim$flood,na.rm=TRUE)
+```
+
+(note: return *levels* are somewhat more complicated to calculate, since they require fitting the underlying distribution of the data... there are lots of resources out there if you need them though!)

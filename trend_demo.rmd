@@ -1,0 +1,208 @@
+---
+title: "Climate Trend Analysis Demo"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+The first step is to read in some data. Here, I've chosen the Lake Cachuma station from the National Centers for Environmental Information website:
+https://www.ncdc.noaa.gov/cdo-web/datatools/findstation
+
+A brief note: The read.table command loads the CSV file provided by NCDC into a table structure in R, here called 'clim'; the as.Date command then transforms the DATE field in that table into an R-formatted date array that R knows how to do things with.
+
+```{r readdata}
+library(lubridate)
+library(ggplot2)
+library(tidyverse)
+library(chron)
+
+clim = read.table("CachumaLake_NCDC_USC00041253.csv",fill=TRUE,sep=',',header=T)
+head(clim)
+
+date=as.Date(clim$DATE)
+
+```
+Now that we've read in the data, the next step is quality checking! Let's make a plot to see what data are missing.
+
+Lets start with daily data of air temperature 
+```{r dailyplots, echo=TRUE}
+
+ggplot(clim, aes(date, clim$TMAX))+geom_line()+ labs(y="Daily Maximum Temperature (degrees F)", x="Date")
+
+ggplot(clim, aes(date, clim$TMIN))+geom_line()+ labs(y="Daily Minimum Temperature (degrees F)", x="Date")
+
+ggplot(clim, aes(date, clim$PRCP))+geom_line()+ labs(y="Daily Rainfall (in)", x="Date")
+
+```
+Some values are "NA" in temperature and precipitation; these have been trimmed automatically by ggplot, but this may not be the case for all functions. In general, you'll want to check meta data to see how missing data is labelled: -999 or NA are common choices. 
+
+To fill - if < 0.5 percent of data is missing there are some very simple ways to fill
+but you must remember that you are doing this!!!
+
+* **Temperature**
+Average of the previous and following day
+
+* **Precip**
+For dry places like the Sierra, assume no rain where data is missing (This may not be a good assumption in other places! be careful.)
+
+
+```{r dailyplots.filled, echo=TRUE}
+
+# find the row with missing data
+fillrow = which(is.na(clim$PRCP))
+fillrow
+clim$PRCP[fillrow]=0
+# replot to make sure it works
+ggplot(clim, aes(date, clim$PRCP))+geom_line()+ labs(y="Daily rainfall (mm)", x="Date")
+
+
+# find rows with missing data
+# temperature
+fillrow = which(is.na(clim$TMAX) | clim$TMAX < 40)
+fillrow = fillrow[2:length(fillrow)]
+clim$TMAX[fillrow]=(clim$TMAX[fillrow+1]+clim$TMAX[fillrow-1])/2
+ggplot(clim, aes(date, clim$TMAX))+geom_line()+ labs(y="Daily Maximum Temperature (degrees F)", x="Date")
+
+```
+
+
+**Is there a trend?**
+
+Trends can be 'swamped' by variation; in this case, the seasonal cycle is quite large. We also need to consider autocorrelation! 
+
+So here let's try doing some aggregation to reduce the noise. As a simple example, we can try annual averages.
+
+```{r annual, echo=TRUE}
+
+clim.mwy = clim %>% group_by(year(date)) %>% summarize(tmax=mean(TMAX), tmin=mean(TMIN), precip=sum(PRCP))
+clim.mwy$dt = unique(year(date))
+
+ggplot(clim.mwy, aes(x=dt, tmax))+geom_point(col="red")+
+  scale_y_continuous(limits=c(min(clim.mwy$tmin), max(clim.mwy$tmax)))+
+geom_point(data=clim.mwy, aes(x=dt, tmin), col="blue")
+
+a = ggplot(clim.mwy, aes(x=dt, tmax))+geom_point(col="red")+
+  scale_y_continuous(limits=c(min(clim.mwy$tmin), max(clim.mwy$tmax)))+
+geom_point(data=clim.mwy, aes(x=dt, tmin), col="blue")
+
+```
+
+Notice the different behavior of the min and max temperatures! 
+
+OK now let's put a trend line on this thing.
+
+```{r wy, echo=TRUE}
+
+# now lets add a trend line
+a =a+stat_smooth(method="lm", col="red")
+a
+a+ stat_smooth(data=clim.mwy, aes(x=dt,tmin), col="blue", method="lm")
+
+```
+
+
+
+Now let's calculate the slope (or how quickly temperatures are rising; we do this with linear regression)
+
+```{r regressionline, echo=TRUE}
+
+res=lm(tmin~dt, data=clim.mwy)
+summary(res)
+confint(res,"dt", level=0.95)
+ggplot(clim.mwy, aes(x=dt, y=tmin)) + stat_summary(fun.y="mean", geom="point", col="red", size=4)+theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) + geom_smooth(method="lm")
+```
+
+The slope on a linear regression between Tmin and wy is the rate of increase in Tmin (mean annual daily minimum temperature).
+
+The value of the slope is -0.015 F/year, and is not statistically significant.
+
+
+Let's do the same analysis for the MAXIMUM temperature now...
+
+```{r tmaxreg, echo=TRUE}
+
+
+res=lm(tmax~dt, data=clim.mwy)
+summary(res)
+confint(res,"dt", level=0.95)
+ggplot(clim.mwy, aes(x=dt, y=tmax)) + stat_summary(fun.y="mean", geom="point", col="red", size=4)+theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) + geom_smooth(method="lm")
+```
+
+Now we find a positive trend: 0.071F/year, or 0.71F/decade. But notice that there seem to be some outliers toward the end of the record...
+
+We might also cut the data into specific periods and see how the slope is changing as a function of time.
+
+```{r subset, echo=TRUE}
+
+
+# early portion
+res_early=lm(tmin~dt, data=subset(clim.mwy, clim.mwy$dt %in% c(1952:1970)))
+summary(res_early)
+confint(res_early,"dt", level=0.90)
+ggplot(subset(clim.mwy, clim.mwy$dt %in% c(1952:1970)), aes(x=dt, y=tmin)) + stat_summary(fun.y="mean", geom="point", col="red", size=4)+theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) + geom_smooth(method="lm")
+
+# last decade
+res_late=lm(tmin~dt, data=subset(clim.mwy, clim.mwy$dt %in% c(1995:2021)))
+summary(res_late)
+confint(res_late,"dt", level=0.90)
+ggplot(subset(clim.mwy, clim.mwy$dt %in% c(1995:2021)), aes(x=dt, y=tmin)) + stat_summary(fun.y="mean", geom="point", col="red", size=4)+theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) + geom_smooth(method="lm")
+
+
+```
+
+
+Regression assumes a linear relationship - and normally distributed data - sometimes that isn't true, we can use non-parameteric tests to look for trends. In these cases, the Mann-Kendall test is commonly used.
+
+tau ranges from -1 to 1 and denotes the "strength" of the trend; p-value denotes significance. Strength however can not be interpreted as slope!
+
+```{r kendall, echo=TRUE}
+
+library(Kendall)
+MannKendall(clim.mwy$tmin)
+MannKendall(clim.mwy$tmax)
+MannKendall(clim.mwy$precip)
+
+```
+We might also look at difference in means (or variance) between the two periods ...Using
+
+T-test (if we think the data is normally distributed)
+or Rank-Sum if we do not.
+
+
+```{r ttest, echo=TRUE}
+
+t.test(subset(clim.mwy$tmin, clim.mwy$dt %in% 1953:1969), subset(clim.mwy$tmin, clim.mwy$dt %in% 1995:2004))
+
+wilcox.test(subset(clim.mwy$tmin, clim.mwy$dt %in% 1953:1969), subset(clim.mwy$tmin, clim.mwy$dt %in% 1995:2004))
+
+```
+There is a statistically significant difference in the means according to both tests, although the p value is slightly lower for the T test.
+
+An alternative approach to aggregation (mean by year)
+is to look at a particular season, lets say we want to look only at summer (July and August)
+
+
+```{r alternative, echo=TRUE}
+# create a variable
+clim$season = ifelse(month(date) %in% c(12,1,2), 1, ifelse(month(date) %in% c(3:5),2, ifelse(month(date) %in% c(6:8),3,4)))
+clim.byseason = clim %>% group_by(year(date),season) %>% summarize(tmax=mean(TMAX), tmin=mean(TMIN), precip=sum(PRCP))
+
+# look only at summer
+clim.summer = subset(clim.byseason, clim.byseason$season==3)
+tmp=unique(year(date))
+clim.summer$wy = tmp[1:length(tmp)-1]
+
+ggplot(clim.summer, aes(x=wy, y=tmin)) + stat_summary(fun.y="mean", geom="point", col="red", size=4)+theme(axis.text=element_text(size=14, face="bold"), axis.title=element_text(size=14, face="bold")) + geom_smooth(method="lm")+labs(y=" Summer Minimum Daily Temperature C")
+
+res=lm(tmax~wy, data=clim.summer)
+summary(res)
+confint(res,"wy", level=0.95)
+
+```
+Notice how the trends in summer minimum temperature differ from the annual minimum temperature trend!
+
+
