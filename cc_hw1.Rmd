@@ -64,7 +64,7 @@ sf_climate_yearly <- sf_climate_new %>%
 
 total_mean <- mean(sf_climate$tmax, na.rm = TRUE)
 
-sf_climate_decade_new <- sf_climate_yearly %>% 
+sf_climate_decade <- sf_climate_yearly %>% 
   filter(year >= 1930 & 2019 >= year) %>% 
   mutate(decade = case_when(year %in% c(1930, 1931, 1932, 1933, 1934, 1935, 1936, 1937, 1938, 1939) ~ "1930", 
                             year %in% c(1940, 1941, 1942, 1943, 1944, 1945, 1946, 1947, 1948, 1949) ~ "1940", 
@@ -75,22 +75,23 @@ sf_climate_decade_new <- sf_climate_yearly %>%
                             year %in% c(1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999) ~ "1990", 
                             year %in% c(2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009) ~ "2000", 
                             year %in% c(2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019) ~ "2010")) %>% 
-  mutate(total_avg = 63.73) %>% 
   group_by(decade) %>% 
   summarize(tmax_avg = mean(tmax, na.rm = TRUE)) %>% 
   mutate(total_avg = 63.73) %>% 
   mutate(difference = (tmax_avg - total_avg)) 
 
-  sf_climate_decade_new$decade <- as.numeric(sf_climate_decade_new$decade)
+  sf_climate_decade$decade <- as.numeric(sf_climate_decade$decade)
+  
+  ylab <- "\nDifference from Average (°F)"
 
-ggplot(data = sf_climate_decade_new, 
+ggplot(data = sf_climate_decade, 
        aes(x = decade,
            y = difference)) + 
   geom_col(fill = "cadetblue4", color = "black") +
-  ggtitle(label = "Decadal Temperature Anomalies, 1930-2020",
+  ggtitle(label = "Decadal Temperature Anomalies, 1930-2019",
           subtitle = "San Francisco, CA") + 
   labs(x = "\nDecade",
-       y = "\nDifference from Average (F)") + 
+       y = ylab) + 
   scale_x_continuous(breaks = c(1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020, 2030)) + 
   scale_y_continuous(breaks = seq(-1.6, 2.4, by = 0.4), labels = comma) + 
   theme_bw() + 
@@ -98,7 +99,7 @@ ggplot(data = sf_climate_decade_new,
               se = FALSE, 
               color = "gray30")
 
-linear_regression = lm(difference ~ decade, data = sf_climate_decade_new)
+linear_regression = lm(difference ~ decade, data = sf_climate_decade)
 summary(linear_regression)
 
 ```
@@ -125,10 +126,10 @@ ggplot(data = sf_climate_decade_new2,
        aes(x = decade,
            y = tmax_avg)) + 
   geom_point() +
-  ggtitle(label = "Decadal Temperature Anomalies, 1930-2020",
+  ggtitle(label = "Maximum Temperature, 1930-2020",
           subtitle = "San Francisco, CA") + 
   labs(x = "\nDecade",
-       y = "\nDifference from Average (F)") + 
+       y = "\nTemperature (F)") + 
   theme_bw() + 
   geom_smooth(method = "lm")
 
@@ -138,15 +139,23 @@ summary(linear_regression)
 
 
 ```{r}
-# Wilcoxon rank-sum test for 2 time chunks: 1930-1970; 1970-2010 
+# t-test and wilcoxon rank-sum test for 2 time chunks: 1930-1970; 1970-2010 
 
-sf_climate_decade_new4 <- sf_climate_yearly %>% 
-  filter(year >= 1930 & 2009 >= year)
+t.test(subset(sf_climate_yearly$tmax, sf_climate_yearly$year %in% 1930:1950), 
+       subset(sf_climate_yearly$tmax, sf_climate_yearly$year %in% 2000:2020))
 
-t.test(subset(sf_climate_decade_new4$tmax, sf_climate_decade_new4$year %in% 1930:1950), subset(sf_climate_decade_new4$tmax, sf_climate_decade_new4$year %in% 1970:1990))
-
-wilcox.test(subset(sf_climate_decade_new4$tmax, sf_climate_decade_new4$year %in% 1930:1950), subset(sf_climate_decade_new4$tmax, sf_climate_decade_new4$year %in% 1970:1990))
+wilcox.test(subset(sf_climate_yearly$tmax, sf_climate_yearly$year %in% 1930:1950), 
+            subset(sf_climate_yearly$tmax, sf_climate_yearly$year %in% 2000:2020))
 ```
+
+```{r}
+# t-test and wilcoxon rank-sum test for 2 time chunks: 1930-1970; 1970-2010 -- DECADAL DATA
+
+t.test(subset(sf_climate_decade$tmax_avg, sf_climate_decade$decade %in% c(1930, 1940)), subset(sf_climate_decade$tmax_avg, sf_climate_decade$decade %in% c(2000, 2010)))
+
+wilcox.test(subset(sf_climate_decade$tmax_avg, sf_climate_decade$decade %in% c(1930, 1940)), subset(sf_climate_decade$tmax_avg, sf_climate_decade$decade %in% c(2000,2010)))
+```
+
 
 ```{r}
 # look at winter? 
@@ -203,7 +212,48 @@ sf_clim_byseason <- sf_climate_new_season %>%
 sf_clim_summer <- sf_clim_byseason %>% 
   filter(season == 3) 
 
+  ylab <- "\nMaximum Average Temperature (°F)"
+  
 ggplot(sf_clim_summer,
+       aes(x = year,
+           y = tmax)) + 
+  stat_summary(fun.y = "mean",
+               geom = "point",
+               col = "cadetblue4", 
+               size = 4) +
+  ggtitle(label = "Summer Average Temperature, 1921-2021",
+          subtitle = "San Francisco, CA") + 
+  labs(x = "\nYear",
+       y = ylab) +
+  theme_bw() +
+  geom_smooth(method = "lm",
+              color = "gray30")
+
+
+ # scale_x_continuous(breaks = c(1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020, 2030)) + 
+ # scale_y_continuous(breaks = seq(-1.6, 2.4, by = 0.4), labels = comma) + 
+    
+
+summer_regression = lm(tmax ~ year, data = sf_clim_summer) 
+summary(summer_regression)
+
+confint(summer_regression, "year", level = 0.95)
+```
+
+```{r}
+# t-test and wilcoxon rank-sum test for 2 time chunks: 1939-1950 vs 2000-2020 for SUMMER tmax 
+
+t.test(subset(sf_clim_summer$tmax, sf_clim_summer$year %in% 1930:1950), subset(sf_clim_summer$tmax, sf_clim_summer$year %in% 2000:2020))
+
+wilcox.test(subset(sf_clim_summer$tmax, sf_clim_summer$year %in% 1930:1950), subset(sf_clim_summer$tmax, sf_clim_summer$year %in% 2000:2020))
+```
+
+```{r}
+# precipitation in winter months 
+sf_clim_winter <- sf_clim_byseason %>% 
+  filter(season == 1) 
+
+ggplot(sf_clim_winter,
        aes(x = year,
            y = tmax)) + 
   stat_summary(fun.y = "mean",
@@ -214,11 +264,21 @@ ggplot(sf_clim_summer,
   geom_smooth(method = "lm")
 
 
-summer_regression = lm(tmax ~ year, data = sf_clim_summer) 
-summary(summer_regression)
+winter_regression = lm(tmax ~ year, data = sf_clim_winter) 
+summary(winter_regression)
 
-confint(summer_regression, "year", level = 0.95)
+confint(winter_regression, "year", level = 0.95)
 ```
+
+
+
+```{r}
+# tests for precipitation in winter months 
+t.test(subset(sf_clim_winter$precip, sf_clim_winter$year %in% 1930:1950), subset(sf_clim_winter$tmax, sf_clim_winter$year %in% 2000:2020))
+
+wilcox.test(subset(sf_clim_winter$tmax, sf_clim_winter$year %in% 1930:1950), subset(sf_clim_winter$tmax, sf_clim_winter$year %in% 2000:2020))
+```
+
 
 ```{r}
 #tmax 
@@ -236,6 +296,21 @@ ggplot(data = sf_climate_yearly,
   geom_line()  
 ```
 
+
+```{r}
+sf_climate_new = sf_climate %>% 
+  mutate(year = year(date)) 
+
+sf_climate_yearly_precip = sf_climate_new %>% 
+  select(year, prcp) %>% 
+  group_by(year) %>% 
+  summarize(prcp = mean(prcp), na.rm = TRUE) 
+
+ggplot(data = sf_climate_yearly_precip,
+       aes(x = year,
+           y = prcp)) +
+  geom_line()  
+```
 
 
 

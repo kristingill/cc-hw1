@@ -45,12 +45,14 @@ Note that the trends in mean-state and extreme metrics often go together: from l
 
 Looking at the warm end of the temperature distribution, we can look for trends in the temperature during the hottest day of the year.
 
-```
+```{r}
 clim.pk = clim %>% group_by(year(date)) %>% summarize(hotday=max(TMAX))
 clim.pk$dt = unique(year(date))
 
 ggplot(clim.pk, aes(dt, hotday))+geom_point()+labs(y="Hottest Day in the Year")
 ```
+
+
 
 3) Return periods 
 
